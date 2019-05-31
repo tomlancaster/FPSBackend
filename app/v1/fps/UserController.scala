@@ -77,8 +77,12 @@ class UserController @Inject()(cc: FPSControllerComponents, userRepo: UserReposi
 
   def show(id: Long): Action[AnyContent] = FPSAction.async { implicit request =>
     logger.trace(s"show: id = $id")
-    userRepo.findById(id).map { post =>
-      Ok(Json.toJson(post))
+    userRepo.findById(id).map { user =>
+      user match {
+        case Some(user) => Ok(Json.toJson(user))
+        case None => notFound("User", id)
+      }
+
     }
   }
 

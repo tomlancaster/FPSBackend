@@ -45,14 +45,30 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
   }
 
   def create(regUser: RegisterUserFormInput): Future[Option[User]] = Future {
-    logger.trace("register: ")
-    regUser.toUser match {
-      case Success(newUser) => registerUser(newUser)
-      case Failure(f) => None
+    logger.trace("create: ")
+    // check for duplicate emails
+    if (findByEmail(regUser.email).isDefined) {
+      None
+    } else {
+      regUser.toUser match {
+        case Success(newUser) => registerUser(newUser)
+        case Failure(f) => None
+      }
+    }
+  }
+
+  def findByEmail(email: String): Option[User] = {
+    db.withConnection { implicit connection =>
+      SQL(
+        """
+          |SELECT * FROM users WHERE email = {email}
+        """.stripMargin)
+        .on("email" -> email).as(simple.singleOpt)
     }
   }
 
   private def registerUser(newUser: User): Option[User] = {
+    logger.trace("register: ")
     db.withConnection { implicit connection =>
       val Some(id:Long) = SQL(
         """

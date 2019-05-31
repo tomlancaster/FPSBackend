@@ -1,7 +1,7 @@
 package v1.fps
 
+import exceptions.{AccessDenied, AuthenticationFailure, DoesNotCompute, DoesNotExist, ValidationError}
 import javax.inject.Inject
-
 import net.logstash.logback.marker.LogstashMarker
 import play.api.{Logger, MarkerContext}
 import play.api.http.{FileMimeTypes, HttpVerbs}
@@ -110,6 +110,28 @@ class FPSBaseController @Inject()(pcc: FPSControllerComponents)
   override protected def controllerComponents: ControllerComponents = pcc
 
   def FPSAction: FPSActionBuilder = pcc.postActionBuilder
+
+  def dontKnow(thing:String):Result =
+    DoesNotCompute(
+      thing
+    ) .httpResult
+
+  def notAllowedTo(thing:String):Result =
+    AccessDenied("You're not allowed to " + thing)
+      .httpResult
+
+
+  def shouldNotBeHere:Result =
+    AuthenticationFailure("You're not logged in, please log in and try again")
+      .httpResult
+
+  def notFound(thing:String,id:Long):Result = DoesNotExist(thing,id).httpResult
+  def notFound(thing:String,reason:String):Result = DoesNotExist(thing,reason).httpResult
+
+  def validationError(errorMap: Map[String,String]):Result = {
+    val r = ValidationError("Data given didn't pass validation") <<+ errorMap
+    r.httpResult
+  }
 
 }
 
