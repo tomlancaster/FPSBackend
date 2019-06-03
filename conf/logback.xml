@@ -53,9 +53,9 @@
 
   <logger name="play" level="INFO" />
   <logger name="application" level="DEBUG" />
-  <logger name="v1.post" level="TRACE" />
+  <logger name="v1.fps" level="TRACE" />
 
-  <root level="WARN">
+  <root level="DEBUG">
     <appender-ref ref="ASYNCFILE" />
     <appender-ref ref="ASYNCJSON" />
     <appender-ref ref="ASYNCSTDOUT" />

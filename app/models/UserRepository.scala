@@ -44,18 +44,7 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
 
   }
 
-  def create(regUser: RegisterUserFormInput): Future[Option[User]] = Future {
-    logger.trace("create: ")
-    // check for duplicate emails
-    if (findByEmail(regUser.email).isDefined) {
-      None
-    } else {
-      regUser.toUser match {
-        case Success(newUser) => registerUser(newUser)
-        case Failure(f) => None
-      }
-    }
-  }
+
 
   def findByEmail(email: String): Option[User] = {
     db.withConnection { implicit connection =>
@@ -67,7 +56,7 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
     }
   }
 
-  private def registerUser(newUser: User): Option[User] = {
+  def registerUser(newUser: User): Option[User] = {
     logger.trace("register: ")
     db.withConnection { implicit connection =>
       val Some(id:Long) = SQL(
@@ -83,15 +72,11 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
           "is_admin" -> newUser.is_admin,
           "created_at" -> newUser.created_at)
         .executeInsert()
-      SQL(
-        """
-          |SELECT * FROM users WHERE id = {id}
-        """.stripMargin)
-        .on("id" -> id).as(simple.singleOpt)
+      findById(id)
     }
   }
 
-  def findById(id:Long): Future[Option[User]] = Future {
+  def findById(id:Long): Option[User] = {
     logger.trace(s"find: $id")
     db.withConnection { implicit connection =>
       SQL(
@@ -102,7 +87,7 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
     }
   }
 
-  def findAll(): Future[Iterable[User]] = Future {
+  def findAll(): Iterable[User] = {
     logger.trace("findAll: ")
     db.withConnection { implicit connection =>
       val users = SQL(

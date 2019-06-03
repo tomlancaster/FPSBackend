@@ -1,8 +1,9 @@
 package exceptions
 
+import play.api.Logger
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Result
-import play.api.mvc.Results.{Status, UnprocessableEntity}
+import play.api.mvc.Results.{BadRequest, Gone, Status, UnprocessableEntity}
 
 import scala.collection.{GenTraversableOnce, Iterator, Map}
 
@@ -184,4 +185,40 @@ case class ValidationError(reason:String, elts:Map[String, List[String]] = Map.e
   override def iterator:Iterator[(String,List[String])] = elts.iterator
 
   override def isEmpty:Boolean = elts.isEmpty
+}
+
+object SimpleISE {
+  def apply(message:String):HTTPError =
+    HTTPError(
+      "There was a problem processing your request.",
+      message,
+      "INTERNAL SERVER ERROR",
+      500
+    )
+}
+
+object DuplicateEmailError {
+  private val logger: Logger = Logger(getClass())
+  def apply(email: String): HTTPError = {
+    logger.debug("in DEE apply")
+    HTTPError(
+      "That email already exists in our database.",
+      email,
+      "BAD REQUEST",
+      400
+    )
+  }
+}
+
+case class DuplicateEmailError(email: String) extends Exception("We already have an account with the email " + email)
+  with FPSError
+{
+  override def json:JsObject = Json.obj(
+    "userMessage" -> "Duplicate email address",
+    "developerMessage" -> "Email address must be unique",
+    "status" -> "Bad Request",
+    "code" -> 400
+  )
+
+  override def res:Status = BadRequest
 }

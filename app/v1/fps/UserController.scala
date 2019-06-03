@@ -2,6 +2,7 @@ package v1.fps
 
 import java.time.ZonedDateTime
 
+import exceptions.DuplicateEmailError
 import javax.inject.Inject
 import models.{User, UserRepository}
 import org.mindrot.jbcrypt.BCrypt
@@ -12,9 +13,10 @@ import play.api._
 import play.api.i18n.Lang
 import play.api.mvc._
 import play.api.i18n.MessagesApi
+import services.UserService
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.util.{Try,Success,Failure}
 
 case class RegisterUserFormInput (email: String,
                                  phone: Option[String] = None,
@@ -35,7 +37,7 @@ case class RegisterUserFormInput (email: String,
   }
 }
 
-class UserController @Inject()(cc: FPSControllerComponents, userRepo: UserRepository)(implicit ec: ExecutionContext)
+class UserController @Inject()(cc: FPSControllerComponents, userService: UserService)(implicit ec: ExecutionContext)
   extends FPSBaseController(cc) {
 
   private val logger = Logger(getClass)
@@ -63,21 +65,20 @@ class UserController @Inject()(cc: FPSControllerComponents, userRepo: UserReposi
 
   def index: Action[AnyContent] = FPSAction.async { implicit request =>
     logger.trace("index: ")
-    userRepo.findAll.map { users =>
+    userService.findAll.map { users =>
       Ok(Json.toJson(users))
     }
   }
 
   def register: Action[AnyContent] = FPSAction.async { implicit request =>
     logger.trace("process: ")
+    logger.debug("register controller method")
     processRegistrationJsonPost()
   }
 
-
-
   def show(id: Long): Action[AnyContent] = FPSAction.async { implicit request =>
     logger.trace(s"show: id = $id")
-    userRepo.findById(id).map { user =>
+    userService.findById(id).map { user =>
       user match {
         case Some(user) => Ok(Json.toJson(user))
         case None => notFound("User", id)
@@ -93,8 +94,13 @@ class UserController @Inject()(cc: FPSControllerComponents, userRepo: UserReposi
     }
 
     def success(input: RegisterUserFormInput) = {
-      userRepo.create(input).map { user =>
-        Created(Json.toJson(user)).withHeaders(LOCATION -> user.toString())
+
+      userService.create(input) match {
+        case Success(user)  => Future(Created(Json.toJson(user)).withHeaders(LOCATION -> user.toString()))
+        case Failure(exception) => exception match {
+          case e: DuplicateEmailError => Future(e.httpResult)
+          case _:Exception => Future(BadRequest("foo"))
+        }
       }
     }
 

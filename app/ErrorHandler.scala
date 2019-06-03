@@ -1,5 +1,5 @@
-import javax.inject.{Inject, Provider}
-
+import exceptions.SimpleISE
+import javax.inject.{Inject, Provider, Singleton}
 import play.api._
 import play.api.http.DefaultHttpErrorHandler
 import play.api.http.Status._
@@ -17,6 +17,7 @@ import scala.concurrent._
   *
   * https://www.playframework.com/documentation/latest/ScalaErrorHandling
   */
+@Singleton
 class ErrorHandler(environment: Environment,
                    configuration: Configuration,
                    sourceMapper: Option[SourceMapper] = None,
@@ -70,12 +71,15 @@ class ErrorHandler(environment: Environment,
       request: RequestHeader,
       exception: UsefulException): Future[Result] = {
     Future.successful(
-      InternalServerError(Json.obj("exception" -> exception.toString)))
+      SimpleISE(exception.getMessage).httpResult
+    )
   }
 
   override protected def onProdServerError(
       request: RequestHeader,
       exception: UsefulException): Future[Result] = {
-    Future.successful(InternalServerError)
+    Future.successful(
+      SimpleISE(exception.getMessage).httpResult
+    )
   }
 }
