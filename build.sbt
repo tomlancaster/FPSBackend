@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.netaporter" %% "scala-uri" % "0.4.16",
   "net.codingwell" %% "scala-guice" % "4.2.1",
   "org.mindrot" % "jbcrypt" % "0.4",
+  "org.pac4j" %% "play-pac4j" % "7.0.1",
   "io.gatling.highcharts" % "gatling-charts-highcharts" % "3.0.1.1" % Test,
   "io.gatling" % "gatling-test-framework" % "3.0.1.1" % Test,
   "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.2" % Test

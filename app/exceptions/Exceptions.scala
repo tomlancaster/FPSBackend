@@ -3,7 +3,7 @@ package exceptions
 import play.api.Logger
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.Result
-import play.api.mvc.Results.{BadRequest, Gone, Status, UnprocessableEntity}
+import play.api.mvc.Results.{BadRequest, Gone, Unauthorized, Status, UnprocessableEntity}
 
 import scala.collection.{GenTraversableOnce, Iterator, Map}
 
@@ -222,3 +222,18 @@ case class DuplicateEmailError(email: String) extends Exception("We already have
 
   override def res:Status = BadRequest
 }
+
+case class BadUsernameOrPasswordError(email: String) extends Exception("Unable to log you in with those credentials ")
+  with FPSError
+{
+  override def json:JsObject = Json.obj(
+    "userMessage" -> "Bad Username or Password",
+    "developerMessage" -> "Bad Username or Password",
+    "status" -> "Unauthorized",
+    "code" -> 401
+  )
+
+  override def res:Status = Unauthorized
+}
+
+

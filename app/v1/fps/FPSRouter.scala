@@ -25,6 +25,9 @@ class FPSRouter @Inject()(controller: UserController) extends SimpleRouter {
 
     case GET(p"/users/$id") =>
       controller.show(id.toLong)
+
+    case POST(p"/users/login") =>
+      controller.login
   }
 
 }

@@ -27,7 +27,18 @@ object User {
   implicit val format: Format[User] = Json.format
 }
 
-@javax.inject.Singleton
+case class UserPublic(id: Option[Long],
+                      email: String,
+                      name: String,
+                      phone: Option[String],
+                      is_admin: Boolean,
+                      created_at: ZonedDateTime
+                     )
+
+object UserPublic {
+  implicit val format: Format[UserPublic] = Json.format
+}
+
 class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionContext) {
 
   private val db = dbapi.database("default")
@@ -44,6 +55,16 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
 
   }
 
+  private [models] val public = get[Option[Long]]("id") ~
+    str("email") ~
+    str("name") ~
+    get[Option[String]]("phone") ~
+    bool("is_admin") ~
+    get[ZonedDateTime]("created_at") map {
+    case i ~ e ~ n ~ p ~ a ~ c => UserPublic(i, e, n, p, a, c)
+
+  }
+
 
 
   def findByEmail(email: String): Option[User] = {
@@ -56,7 +77,7 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
     }
   }
 
-  def registerUser(newUser: User): Option[User] = {
+  def registerUser(newUser: User): Option[UserPublic] = {
     logger.trace("register: ")
     db.withConnection { implicit connection =>
       val Some(id:Long) = SQL(
@@ -76,25 +97,25 @@ class UserRepository @Inject()(dbapi: DBApi)(implicit ec: DatabaseExecutionConte
     }
   }
 
-  def findById(id:Long): Option[User] = {
+  def findById(id:Long): Option[UserPublic] = {
     logger.trace(s"find: $id")
     db.withConnection { implicit connection =>
       SQL(
         """
           |SELECT * FROM users WHERE id = {id}
         """.stripMargin)
-        .on("id" -> id).as(simple.singleOpt)
+        .on("id" -> id).as(public.singleOpt)
     }
   }
 
-  def findAll(): Iterable[User] = {
+  def findAll(): Iterable[UserPublic] = {
     logger.trace("findAll: ")
     db.withConnection { implicit connection =>
       val users = SQL(
         """
           |SELECT * FROM users
         """.stripMargin)
-        .as(simple.*)
+        .as(public.*)
       logger.debug("users: " + users.toString())
       users
     }

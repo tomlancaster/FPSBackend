@@ -2,9 +2,9 @@ package v1.fps
 
 import java.time.ZonedDateTime
 
-import exceptions.DuplicateEmailError
+import exceptions.{DuplicateEmailError, BadUsernameOrPasswordError}
 import javax.inject.Inject
-import models.{User, UserRepository}
+import models.{User}
 import org.mindrot.jbcrypt.BCrypt
 import play.api.Logger
 import play.api.data.Form
@@ -37,6 +37,8 @@ case class RegisterUserFormInput (email: String,
   }
 }
 
+case class LoginUserFormInput (email: String, password: String)
+
 class UserController @Inject()(cc: FPSControllerComponents, userService: UserService)(implicit ec: ExecutionContext)
   extends FPSBaseController(cc) {
 
@@ -63,6 +65,17 @@ class UserController @Inject()(cc: FPSControllerComponents, userService: UserSer
     )
   }
 
+  private val loginForm: Form[LoginUserFormInput] = {
+    import play.api.data.Forms._
+
+    Form(
+      mapping(
+        "email" -> email,
+        "password" -> nonEmptyText
+      )(LoginUserFormInput.apply)(LoginUserFormInput.unapply)
+    )
+  }
+
   def index: Action[AnyContent] = FPSAction.async { implicit request =>
     logger.trace("index: ")
     userService.findAll.map { users =>
@@ -74,6 +87,11 @@ class UserController @Inject()(cc: FPSControllerComponents, userService: UserSer
     logger.trace("process: ")
     logger.debug("register controller method")
     processRegistrationJsonPost()
+  }
+
+  def login: Action[AnyContent] = FPSAction.async { implicit request =>
+    logger.trace("login: ")
+    processLoginJsonPost()
   }
 
   def show(id: Long): Action[AnyContent] = FPSAction.async { implicit request =>
@@ -96,15 +114,36 @@ class UserController @Inject()(cc: FPSControllerComponents, userService: UserSer
     def success(input: RegisterUserFormInput) = {
 
       userService.create(input) match {
-        case Success(user)  => Future(Created(Json.toJson(user)).withHeaders(LOCATION -> user.toString()))
+        case Success(user)  => Future.successful(Created(Json.toJson(user))
+        .withSession("loggedIn" -> user.name, "id" -> user.id.toString))
         case Failure(exception) => exception match {
-          case e: DuplicateEmailError => Future(e.httpResult)
-          case _:Exception => Future(BadRequest("foo"))
+          case e: DuplicateEmailError => Future.successful(e.httpResult)
+          case _:Exception => Future.successful(BadRequest("foo"))
         }
       }
     }
 
     registerForm.bindFromRequest().fold(failure, success)
+  }
+
+
+  private def processLoginJsonPost[A]()(
+    implicit request: FPSRequest[A]): Future[Result] = {
+    def failure(badForm: Form[LoginUserFormInput]) = {
+      Future.successful(Unauthorized("Please provide an email and password"))
+    }
+
+    def success(input: LoginUserFormInput) = {
+      userService.login(input) match {
+        case Success(user) => Future.successful(Ok(Json.toJson(user)).withSession("loggedIn" -> user.name,
+          "id" -> user.id.toString))
+        case Failure(exception) => exception match {
+          case e: BadUsernameOrPasswordError => Future.successful(e.httpResult)
+          case _: Exception => Future.successful(BadRequest("foo"))
+        }
+      }
+    }
+    loginForm.bindFromRequest().fold(failure, success)
   }
 
 
