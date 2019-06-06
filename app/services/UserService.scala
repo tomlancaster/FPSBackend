@@ -35,12 +35,17 @@ class UserService @Inject()(userRepo: UserRepository)(implicit ec: ExecutionCont
     maybeUser match {
       case Some(user) => {
         if (BCrypt.checkpw(loginUser.password, user.hashed_password)) {
+          logger.debug("login success")
           Success(userRepo.findById(user.id.get).get)
         } else {
+          logger.debug("login failure")
           Failure(new BadUsernameOrPasswordError(loginUser.email))
         }
       }
-      case None => Failure(new BadUsernameOrPasswordError(loginUser.email))
+      case None => {
+        logger.debug("user not found")
+        Failure(new BadUsernameOrPasswordError(loginUser.email))
+      }
     }
   }
 

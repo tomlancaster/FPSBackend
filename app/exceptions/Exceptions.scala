@@ -15,9 +15,7 @@ trait FPSError extends Throwable {
   def res:Status
   def meta:JsObject = Json.obj()
   def httpResult:Result = res(
-    Json.obj(
-      "error" -> json
-    ) ++ meta
+      json ++ meta
   ) .as(
     "application/json"
   ) .withHeaders(
@@ -229,11 +227,11 @@ case class BadUsernameOrPasswordError(email: String) extends Exception("Unable t
   override def json:JsObject = Json.obj(
     "userMessage" -> "Bad Username or Password",
     "developerMessage" -> "Bad Username or Password",
-    "status" -> "Unauthorized",
-    "code" -> 401
+    "status" -> "Bad Request",
+    "code" -> 400
   )
 
-  override def res:Status = Unauthorized
+  override def res:Status = BadRequest
 }
 
 
