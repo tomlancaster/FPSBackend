@@ -195,18 +195,19 @@ object SimpleISE {
     )
 }
 
-object DuplicateEmailError {
-  private val logger: Logger = Logger(getClass())
-  def apply(email: String): HTTPError = {
-    logger.debug("in DEE apply")
-    HTTPError(
-      "That email already exists in our database.",
-      email,
-      "BAD REQUEST",
-      400
-    )
-  }
+case class MediaSaveError() extends Exception("There was a problem saving your media ")
+  with FPSError
+{
+  override def json:JsObject = Json.obj(
+    "userMessage" -> "Media upload error",
+    "developerMessage" -> "Error uploading to AWS",
+    "status" -> "Bad Request",
+    "code" -> 400
+  )
+
+  override def res:Status = BadRequest
 }
+
 
 case class DuplicateEmailError(email: String) extends Exception("We already have an account with the email " + email)
   with FPSError
@@ -233,5 +234,7 @@ case class BadUsernameOrPasswordError(email: String) extends Exception("Unable t
 
   override def res:Status = BadRequest
 }
+
+
 
 

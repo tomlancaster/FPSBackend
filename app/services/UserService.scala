@@ -21,7 +21,7 @@ class UserService @Inject()(userRepo: UserRepository)(implicit ec: ExecutionCont
     // check for duplicate emails
     if (userRepo.findByEmail(regUser.email).isDefined) {
       logger.debug("seen email")
-      Failure(new DuplicateEmailError(regUser.email))
+      Failure(DuplicateEmailError(regUser.email))
     } else {
       regUser.toUser match {
         case Success(newUser) => Success(userRepo.registerUser(newUser).get)
@@ -39,12 +39,12 @@ class UserService @Inject()(userRepo: UserRepository)(implicit ec: ExecutionCont
           Success(userRepo.findById(user.id.get).get)
         } else {
           logger.debug("login failure")
-          Failure(new BadUsernameOrPasswordError(loginUser.email))
+          Failure(BadUsernameOrPasswordError(loginUser.email))
         }
       }
       case None => {
         logger.debug("user not found")
-        Failure(new BadUsernameOrPasswordError(loginUser.email))
+        Failure(BadUsernameOrPasswordError(loginUser.email))
       }
     }
   }

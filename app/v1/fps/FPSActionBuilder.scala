@@ -2,16 +2,18 @@ package v1.fps
 
 import exceptions.{AccessDenied, AuthenticationFailure, DoesNotCompute, DoesNotExist, ValidationError}
 import javax.inject.Inject
+import models.{UserPublic, UserRepository}
 import net.logstash.logback.marker.LogstashMarker
 import play.api.{Logger, MarkerContext}
 import play.api.http.{FileMimeTypes, HttpVerbs}
 import play.api.i18n.{Langs, MessagesApi}
+import play.api.libs.typedmap.{TypedKey, TypedMap}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * A wrapped request for post resources.
+  * A wrapped request for fps resources.
   *
   * This is commonly used to hold request-specific information like
   * security credentials, and useful shortcut methods.
@@ -19,9 +21,16 @@ import scala.concurrent.{ExecutionContext, Future}
 trait FPSRequestHeader
   extends MessagesRequestHeader
     with PreferredMessagesProvider
+
 class FPSRequest[A](request: Request[A], val messagesApi: MessagesApi)
   extends WrappedRequest(request)
     with FPSRequestHeader
+
+class AuthenticatedFPSRequest[A](
+                                 request: Request[A],
+                                 val user: UserPublic,
+                                 messagesApi: MessagesApi)
+  extends FPSRequest(request, messagesApi)
 
 /**
   * Provides an implicit marker that will show the request in all logger statements.
@@ -46,7 +55,7 @@ trait RequestMarkerContext {
 }
 
 /**
-  * The action builder for the Post resource.
+  * The action builder for the FPS resource.
   *
   * This is the place to put logging, metrics, to augment
   * the request with contextual data, and manipulate the
@@ -85,6 +94,47 @@ class FPSActionBuilder @Inject()(messagesApi: MessagesApi,
   }
 }
 
+class AuthenticatedFPSActionBuilder @Inject()(messagesApi: MessagesApi,
+                                              playBodyParsers: PlayBodyParsers,
+                                              userRepository: UserRepository,
+                                              override implicit val executionContext: ExecutionContext)
+  extends ActionBuilder[AuthenticatedFPSRequest, AnyContent]
+    with RequestMarkerContext
+    with HttpVerbs {
+
+  override val parser: BodyParser[AnyContent] = playBodyParsers.anyContent
+
+  type AuthenticatedFPSRequestBlock[A] = AuthenticatedFPSRequest[A] => Future[Result]
+
+  private val logger = Logger(this.getClass)
+
+  override def invokeBlock[A](request: Request[A],
+                              block: AuthenticatedFPSRequestBlock[A]): Future[Result] = {
+
+    // Convert to marker context and use request in block
+    implicit val markerContext: MarkerContext = requestHeaderToMarkerContext(
+      request)
+    logger.trace(s"invokeBlock(Authenticated): ")
+    val future = request.session
+      .get("userId")
+      .flatMap {
+        id: String => userRepository.findById(id.toLong)
+      }
+      .map(user => block(new AuthenticatedFPSRequest[A](request, user, messagesApi)))
+      .getOrElse(Future.successful(Results.Forbidden))
+
+    future.map { result =>
+      request.method match {
+        case GET | HEAD =>
+          result.withHeaders("Cache-Control" -> s"max-age: 100")
+        case other =>
+          result
+      }
+    }
+  }
+}
+
+
 /**
   * Packages up the component dependencies for the post controller.
   *
@@ -92,7 +142,8 @@ class FPSActionBuilder @Inject()(messagesApi: MessagesApi,
   * controller only has to have one thing injected.
   */
 case class FPSControllerComponents @Inject()(
-                                               postActionBuilder: FPSActionBuilder,
+                                               fpsActionBuilder: FPSActionBuilder,
+                                               authenticatedFPSActionBuilder: AuthenticatedFPSActionBuilder,
                                                actionBuilder: DefaultActionBuilder,
                                                parsers: PlayBodyParsers,
                                                messagesApi: MessagesApi,
@@ -109,7 +160,9 @@ class FPSBaseController @Inject()(pcc: FPSControllerComponents)
     with RequestMarkerContext {
   override protected def controllerComponents: ControllerComponents = pcc
 
-  def FPSAction: FPSActionBuilder = pcc.postActionBuilder
+  def FPSAction: FPSActionBuilder = pcc.fpsActionBuilder
+
+  def AuthenticatedFPSAction: AuthenticatedFPSActionBuilder = pcc.authenticatedFPSActionBuilder
 
   def dontKnow(thing:String):Result =
     DoesNotCompute(

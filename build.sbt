@@ -10,14 +10,16 @@ libraryDependencies ++= Seq(
   evolutions, jdbc,
   "org.postgresql" % "postgresql" % "42.2.5",
   "org.playframework.anorm" %% "anorm" % "2.6.2",
-  "org.joda" % "joda-convert" % "2.1.2",
-  "net.logstash.logback" % "logstash-logback-encoder" % "5.2",
-  "com.netaporter" %% "scala-uri" % "0.4.16",
-  "net.codingwell" %% "scala-guice" % "4.2.1",
+  "org.joda" % "joda-convert" % "2.2.1",
+  "net.logstash.logback" % "logstash-logback-encoder" % "6.0",
+  "io.lemonlabs" %% "scala-uri" % "1.4.5",
+  "net.codingwell" %% "scala-guice" % "4.2.3",
   "org.mindrot" % "jbcrypt" % "0.4",
-  "org.pac4j" %% "play-pac4j" % "7.0.1",
-  "io.gatling.highcharts" % "gatling-charts-highcharts" % "3.0.1.1" % Test,
-  "io.gatling" % "gatling-test-framework" % "3.0.1.1" % Test,
+  "com.typesafe.akka" %% "akka-actor" % "2.5.22",
+  "com.typesafe.akka" %% "akka-stream" % "2.5.22",
+  "com.typesafe.akka" %% "akka-http" % "10.1.8",
+  "com.typesafe.akka" %% "akka-http-xml" % "10.1.8",
+  "com.lightbend.akka" %% "akka-stream-alpakka-s3" % "1.0.2",
   "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.2" % Test
 )
 
@@ -25,9 +27,7 @@ lazy val GatlingTest = config("gatling") extend Test
 
 // The Play project itself
 lazy val root = (project in file("."))
-  .enablePlugins(Common, PlayService, PlayLayoutPlugin, GatlingPlugin)
-  .configs(GatlingTest)
-  .settings(inConfig(GatlingTest)(Defaults.testSettings): _*)
+  .enablePlugins(Common, PlayService, PlayLayoutPlugin)
   .settings(
     name := """familyphotosharing""",
     scalaSource in GatlingTest := baseDirectory.value / "/gatling/simulation"

@@ -76,7 +76,7 @@ class UserController @Inject()(cc: FPSControllerComponents, userService: UserSer
     )
   }
 
-  def index: Action[AnyContent] = FPSAction.async { implicit request =>
+  def index: Action[AnyContent] = AuthenticatedFPSAction.async { implicit request =>
     logger.trace("index: ")
     userService.findAll.map { users =>
       Ok(Json.toJson(users))
@@ -136,7 +136,7 @@ class UserController @Inject()(cc: FPSControllerComponents, userService: UserSer
     def success(input: LoginUserFormInput) = {
       userService.login(input) match {
         case Success(user) => Future.successful(Ok(Json.toJson(user)).withSession("loggedIn" -> user.name,
-          "id" -> user.id.toString))
+          "userId" -> user.id.toString))
         case Failure(exception) => exception match {
           case e: BadUsernameOrPasswordError => Future.successful(e.httpResult)
           case _: Exception => Future.successful(BadRequest("foo"))
